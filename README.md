@@ -1,4 +1,4 @@
-# s3aws
+# Native Cloud Object Storage: Programmatic S3 & Pre-Signed Access
 
 This repository contains a small Python reference for working with Amazon S3 from an EC2 instance using the instance's IAM role.
 
