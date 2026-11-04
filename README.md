@@ -1,4 +1,4 @@
-# s3aws
+# Native Cloud Object Storage: Programmatic S3 & Pre-Signed Access
 
 This repository contains a small Python reference for working with Amazon S3 from an EC2 instance using the instance's IAM role.
 
@@ -98,3 +98,21 @@ This will upload a sample JSON object, print the object metadata from `head_obje
 - `AccessDenied` or `NoCredentialsError`: check that the EC2 instance has the correct IAM role attached.
 - `NoSuchBucket`: confirm the bucket name and region are correct.
 - `SignatureDoesNotMatch`: verify the URL is not truncated and that the instance clock is reasonably in sync.
+
+## What to expect from the pre-signed URL
+
+The script generates a pre-signed **GET** URL that grants temporary read access to the uploaded object. It is valid for 300 seconds (5 minutes). Anyone with the URL can use it during that period, without AWS credentials, so treat it like a temporary password and do not post or share it publicly.
+
+While it is valid, opening the URL in a browser or requesting it with `curl` should return HTTP `200` and the uploaded JSON:
+
+```json
+{"sensor": "temp_probe_01", "status": "active", "reading": 23.4}
+```
+
+For example, copy the URL printed by the script and run:
+
+```bash
+curl -i "<PASTE_PRESIGNED_URL_HERE>"
+```
+
+After the 5-minute expiration window, the same request should fail with HTTP `403 Forbidden` and an S3 error indicating that the request has expired. The script also tests the URL immediately and prints the HTTP status and returned content.
