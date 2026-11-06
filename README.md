@@ -1,4 +1,4 @@
-# AWS S3 Object Storage Lab
+# AWS S3 Cloud Computing Object Storage Lab
 
 This assignment compares AWS S3 object storage with traditional NAS/SAN storage and demonstrates how applications can use S3 metadata and time-limited pre-signed URLs to transfer files directly between a client and S3.
 
