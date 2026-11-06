@@ -1,0 +1,112 @@
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6; max-width: 900px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; background: #ffffff;">
+
+  <!-- Header Banner -->
+  <div style="background-color: #00205B; color: #ffffff; padding: 26px 30px; border-bottom: 4px solid #FFC72C;">
+    <span style="background-color: #FFC72C; color: #00205B; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 4px 8px; border-radius: 4px;">Hands-On Cloud Lab</span>
+    <h1 style="margin: 10px 0 4px 0; font-size: 24px; font-weight: 700; color: #ffffff;">Lab: AWS S3 Object Storage vs. NAS/SAN Architecture</h1>
+    <p style="margin: 0; font-size: 14px; color: #cbd5e1;">Time Estimate: 60–90 mins | Topics: AWS S3, IAM, SigV4 Presigned URLs, Cloud Storage Economics</p>
+  </div>
+
+  <div style="padding: 30px;">
+
+    <!-- Action Link to Vercel App -->
+    <div style="background-color: #f8fafc; border: 2px solid #00205B; border-radius: 6px; padding: 18px 22px; margin-bottom: 26px; display: flex; align-items: center; justify-content: space-between;">
+      <div>
+        <h3 style="margin: 0 0 4px 0; font-size: 16px; color: #00205B;">Interactive Lab Portal & Code Repository</h3>
+        <p style="margin: 0; font-size: 13px; color: #475569;">Access the interactive architectural visualizer, direct-transfer tester, and starter scripts.</p>
+      </div>
+      <div>
+        <!-- REPLACE THE HREF BELOW WITH YOUR ACTUAL VERCEL URL -->
+        <a href="https://YOUR-APP-NAME.vercel.app" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #00205B; color: #FFC72C; font-weight: 700; text-decoration: none; padding: 10px 18px; border-radius: 4px; font-size: 13px; white-space: nowrap;">Open Lab Portal &rarr;</a>
+      </div>
+    </div>
+
+    <!-- Background & Theory -->
+    <h3 style="color: #00205B; font-size: 17px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px;">1. The Core Problem: Why Not NAS/SAN for Web Media?</h3>
+    <p style="font-size: 14px;">
+      Enterprise networks commonly use <strong>SAN (Storage Area Networks)</strong> for raw OS blocks and <strong>NAS (Network Attached Storage)</strong> for shared folder hierarchies. While NAS is suitable for internal office drives, using it for web clients introduces severe bottlenecks:
+    </p>
+    <ul style="font-size: 13px; color: #334155; padding-left: 20px;">
+      <li style="margin-bottom: 6px;"><strong>Compute Proxy Bottlenecks:</strong> To serve a file from a NAS mount, your web server must open the file and stream every byte over its own NIC. 10,000 downloads will saturate server bandwidth.</li>
+      <li style="margin-bottom: 6px;"><strong>Payload Limits:</strong> Serverless hosts (such as Vercel or AWS Lambda) strictly limit request body sizes (e.g., 4.5 MB). Uploading directly through the application server fails for larger media.</li>
+      <li><strong>The S3 Advantage:</strong> S3 is an HTTP-native object store. Using <strong>Presigned URLs</strong>, web clients stream downloads and uploads directly to/from S3 over standard REST endpoints—completely bypassing web servers.</li>
+    </ul>
+
+    <!-- Lab Instructions -->
+    <h3 style="color: #00205B; font-size: 17px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin-top: 26px;">2. Student Setup Instructions</h3>
+
+    <!-- Step 1: AWS Credentials -->
+    <div style="margin-bottom: 20px;">
+      <h4 style="margin: 0 0 6px 0; color: #00205B; font-size: 15px;">Step A: Create AWS IAM Programmatic Credentials</h4>
+      <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155;">
+        <li>Log into the <strong>AWS Management Console</strong>.</li>
+        <li>Navigate to <strong>IAM &gt; Users &gt; Create user</strong> (e.g., <code style="background:#f1f5f9; padding:2px 4px;">s3-lab-user</code>).</li>
+        <li>Under permissions, select <strong>Attach policies directly</strong> and attach <code style="background:#f1f5f9; padding:2px 4px;">AmazonS3FullAccess</code> (or scope to your lab bucket).</li>
+        <li>Go to the user's <strong>Security credentials</strong> tab &gt; <strong>Create access key</strong> &gt; Select <em>Local code / CLI</em>.</li>
+        <li>Save your <strong>Access Key ID</strong> and <strong>Secret Access Key</strong> securely.</li>
+      </ol>
+    </div>
+
+    <!-- Step 2: Bucket Creation -->
+    <div style="margin-bottom: 20px;">
+      <h4 style="margin: 0 0 6px 0; color: #00205B; font-size: 15px;">Step B: Create a Private S3 Bucket</h4>
+      <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155;">
+        <li>Navigate to <strong>Amazon S3 &gt; Create bucket</strong>.</li>
+        <li>Name your bucket uniquely (e.g., <code style="background:#f1f5f9; padding:2px 4px;">vault-&lt;student-id&gt;-lab</code>) and choose your preferred AWS Region.</li>
+        <li>Leave <strong>Block Public Access</strong> set to <strong>ON (Checked)</strong>. (This proves the bucket remains 100% private to the public).</li>
+      </ol>
+    </div>
+
+    <!-- Step 3: Configure CORS -->
+    <div style="margin-bottom: 20px;">
+      <h4 style="margin: 0 0 6px 0; color: #00205B; font-size: 15px;">Step C: Configure Bucket CORS (Required for Web Browsers)</h4>
+      <p style="margin: 0 0 8px 0; font-size: 13px; color: #475569;">
+        Because you will be streaming data directly between your browser (visiting the Vercel app) and AWS S3, S3 must allow Cross-Origin Resource Sharing.
+      </p>
+      <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155;">
+        <li>Open your new bucket &gt; click the <strong>Permissions</strong> tab.</li>
+        <li>Scroll to <strong>Cross-origin resource sharing (CORS)</strong> &gt; click <strong>Edit</strong>.</li>
+        <li>Paste the following JSON rule and click <strong>Save changes</strong>:</li>
+      </ol>
+      <pre style="background: #0f172a; color: #f8fafc; padding: 12px 14px; border-radius: 6px; font-size: 12px; overflow-x: auto; font-family: monospace; margin-top: 8px;">[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT", "HEAD"],
+    "AllowedOrigins": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]</pre>
+    </div>
+
+    <!-- Step 4: Run the Code -->
+    <div style="margin-bottom: 24px;">
+      <h4 style="margin: 0 0 6px 0; color: #00205B; font-size: 15px;">Step D: Run the Scripts from the Lab Portal</h4>
+      <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #334155;">
+        <li>Open the <strong>Lab Portal</strong> (linked at the top of this page) and switch to the <strong>Code Repository</strong> tab.</li>
+        <li>Copy <code style="background:#f1f5f9; padding:2px 4px;">generate_links.py</code> to your local machine.</li>
+        <li>Install Boto3: <code style="background:#f1f5f9; padding:2px 4px;">pip install boto3</code>.</li>
+        <li>Set your credentials via terminal or <code style="background:#f1f5f9; padding:2px 4px;">.env</code>:
+          <pre style="background: #0f172a; color: #f8fafc; padding: 8px 12px; border-radius: 4px; font-size: 12px; margin-top: 6px;">export AWS_ACCESS_KEY_ID="your-key"
+export AWS_SECRET_ACCESS_KEY="your-secret"
+export AWS_DEFAULT_REGION="your-region"
+export VAULT_BUCKET_NAME="vault-&lt;student-id&gt;-lab"</pre>
+        </li>
+        <li>Execute <code style="background:#f1f5f9; padding:2px 4px;">python generate_links.py</code>.</li>
+        <li>Copy the generated <strong>Presigned GET URL</strong> and paste it into the <strong>Live Inspector</strong> tool on the Vercel Lab Portal.</li>
+      </ol>
+    </div>
+
+    <!-- Deliverables -->
+    <h3 style="color: #00205B; font-size: 17px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px;">3. Submission Deliverables</h3>
+    <div style="background-color: #fffdf5; border-left: 4px solid #FFC72C; padding: 14px 18px; border-radius: 0 6px 6px 0;">
+      <ul style="margin: 0; padding-left: 18px; font-size: 13px; color: #78350f;">
+        <li style="margin-bottom: 6px;"><strong>Screenshot 1:</strong> Your private S3 bucket in the AWS Console showing the seeded sample asset with "Block all public access" turned ON.</li>
+        <li style="margin-bottom: 6px;"><strong>Screenshot 2:</strong> The Lab Portal on Vercel displaying your fetched private image using your live Presigned GET link.</li>
+        <li style="margin-bottom: 6px;"><strong>Screenshot 3:</strong> The browser error page (<code style="background:#fef3c7; padding:2px 4px;">403 AccessDenied</code> or <code style="background:#fef3c7; padding:2px 4px;">RequestTimeout</code>) after letting the presigned TTL expire.</li>
+        <li><strong>Short Answer (1–2 paragraphs):</strong> Explain why an enterprise streaming high-resolution videos to 20,000 concurrent mobile users would experience failure using an on-premise NFS/NAS server, and how S3 presigned URLs resolve that issue.</li>
+      </ul>
+    </div>
+
+  </div>
+</div>

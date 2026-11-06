@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S3 Vault & Storage Architecture Portal</title>
+  <style>
+    :root {
+      --navy: #00205B;
+      --navy-light: #0a337f;
+      --gold: #FFC72C;
+      --gold-dark: #d99e00;
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --code-bg: #020617;
+      --success: #22c55e;
+      --error: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 30px 20px;
+    }
+
+    .container {
+      max-width: 1060px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: var(--navy);
+      border-radius: 12px 12px 0 0;
+      padding: 32px 36px;
+      border-bottom: 5px solid var(--gold);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+    .badge {
+      display: inline-block;
+      background: var(--gold);
+      color: var(--navy);
+      font-weight: 800;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      padding: 4px 10px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+    header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+    header p {
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      background: #182234;
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-tab {
+      flex: 1;
+      padding: 16px 20px;
+      text-align: center;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-bottom: 3px solid transparent;
+    }
+    .nav-tab:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .nav-tab.active {
+      color: var(--gold);
+      border-bottom: 3px solid var(--gold);
+      background: rgba(255, 199, 44, 0.05);
+    }
+
+    .tab-content {
+      display: none;
+      background: var(--card-bg);
+      padding: 32px;
+      border-radius: 0 0 12px 12px;
+      border: 1px solid var(--border);
+      border-top: none;
+      box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.5);
+    }
+    .tab-content.active { display: block; }
+
+    h2 { font-size: 19px; color: #fff; margin-bottom: 12px; }
+    p.lead { font-size: 14px; color: var(--text-muted); margin-bottom: 22px; }
+
+    /* Matrix Table */
+    table.matrix {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 18px 0 28px 0;
+    }
+    table.matrix th, table.matrix td {
+      padding: 12px 16px;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    table.matrix th {
+      background: var(--navy);
+      color: #fff;
+      font-weight: 600;
+    }
+    table.matrix tr:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
+    table.matrix .highlight {
+      background: rgba(255, 199, 44, 0.1);
+      color: #fef08a;
+      font-weight: 600;
+    }
+
+    /* Live Testing Cards */
+    .card {
+      background: #151f30;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+    .card h3 {
+      font-size: 16px;
+      color: var(--gold);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card p { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
+
+    input[type="text"], input[type="file"] {
+      width: 100%;
+      padding: 12px 14px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: #fff;
+      font-size: 13px;
+      font-family: monospace;
+      margin-bottom: 14px;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    .btn {
+      background: var(--navy);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      padding: 10px 22px;
+      font-size: 13px;
+      font-weight: 700;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn:hover {
+      background: var(--gold);
+      color: var(--navy);
+    }
+
+    .preview-container {
+      margin-top: 18px;
+      min-height: 120px;
+      background: var(--code-bg);
+      border: 2px dashed var(--border);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .terminal-log {
+      background: #020617;
+      border-left: 3px solid var(--gold);
+      padding: 12px 16px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #38bdf8;
+      border-radius: 4px;
+      margin-top: 14px;
+      display: none;
+    }
+
+    /* Code Viewer */
+    .file-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .file-tab {
+      background: #020617;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: monospace;
+      cursor: pointer;
+    }
+    .file-tab.active {
+      background: var(--navy);
+      color: var(--gold);
+      border-color: var(--gold);
+    }
+    .code-box-wrapper {
+      position: relative;
+    }
+    pre.code-view {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 18px;
+      color: #e2e8f0;
+      font-size: 12px;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+    .btn-copy {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .btn-copy:hover { color: #fff; border-color: var(--gold); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="badge">Lab Infrastructure Portal</div>
+    <h1>Direct S3 Storage Portal & Architecture Benchmark</h1>
+    <p>Compare Object Storage against SAN/NAS architectures and test direct browser-to-cloud SigV4 transfers.</p>
+  </header>
+
+  <nav class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('tester')">1. Live URL Testing Studio</button>
+    <button class="nav-tab" onclick="switchTab('repo')">2. Lab Code Repository</button>
+    <button class="nav-tab" onclick="switchTab('theory')">3. S3 vs. NAS vs. SAN Matrix</button>
+  </nav>
+
+  <!-- TAB 1: TESTER -->
+  <div id="tab-tester" class="tab-content active">
+    <h2>Presigned URL Verification Console</h2>
+    <p class="lead">Test your Python-generated ephemeral links directly inside this browser client without server proxies.</p>
+
+    <div class="card">
+      <h3><span>&darr;</span> Test 1: Fetch Private Asset (Presigned GET)</h3>
+      <p>Paste the signed GET URL output from <code>generate_links.py</code>. The asset will stream directly from AWS S3 to your browser.</p>
+      <input type="text" id="getUrlInput" placeholder="https://<bucket-name>.s3.amazonaws.com/vault/...X-Amz-Signature=..." />
+      <button class="btn" onclick="testPresignedGet()">Stream Asset from S3</button>
+
+      <div class="preview-container" id="previewContainer">
+        <span style="color: var(--text-muted); font-size: 13px;">Image stream output will render here</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span>&uarr;</span> Test 2: Direct Upload (Presigned PUT)</h3>
+      <p>Stream a file straight to your S3 bucket without uploading to the Vercel server. Bypasses the 4.5MB serverless payload limit.</p>
+      <input type="text" id="putUrlInput" placeholder="https://<bucket-name>.s3.amazonaws.com/vault/direct-user-upload.png?..." />
+      <input type="file" id="fileInput" accept="image/png" />
+      <button class="btn" onclick="testPresignedPut()">Stream Upload Directly to S3</button>
+
+      <div id="uploadStatus" class="terminal-log"></div>
+    </div>
+  </div>
+
+  <!-- TAB 2: CODE REPO -->
+  <div id="tab-repo" class="tab-content">
+    <h2>Student Code Files</h2>
+    <p class="lead">Copy these files to run on your local terminal or inspect your repository assets.</p>
+
+    <div class="file-tabs">
+      <button class="file-tab active" onclick="showFile('setup')">setup_storage.py</button>
+      <button class="file-tab" onclick="showFile('generate')">generate_links.py</button>
+      <button class="file-tab" onclick="showFile('env')">.env.example</button>
+      <button class="file-tab" onclick="showFile('reqs')">requirements.txt</button>
+    </div>
+
+    <div class="code-box-wrapper">
+      <button class="btn-copy" onclick="copyCode()">Copy File Content</button>
+      <pre class="code-view"><code id="codeDisplay"></code></pre>
+    </div>
+  </div>
+
+  <!-- TAB 3: THEORY & BENCHMARK -->
+  <div id="tab-theory" class="tab-content">
+    <h2>Storage Architecture Comparison</h2>
+    <p class="lead">Understanding when to select S3 (Object) versus traditional NAS (File) or SAN (Block).</p>
+
+    <table class="matrix">
+      <thead>
+        <tr>
+          <th>Attribute</th>
+          <th>SAN (Storage Area Network)</th>
+          <th>NAS (Network Attached Storage)</th>
+          <th>AWS S3 (Object Store)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Storage Unit</strong></td>
+          <td>Raw Disk Blocks</td>
+          <td>Hierarchical Files & Directories</td>
+          <td class="highlight">Objects (Flat Key-Value + Metadata)</td>
+        </tr>
+        <tr>
+          <td><strong>Access Protocol</strong></td>
+          <td>Fibre Channel, iSCSI</td>
+          <td>NFS, SMB / CIFS</td>
+          <td class="highlight">HTTP/HTTPS REST APIs</td>
+        </tr>
+        <tr>
+          <td><strong>Client Interface</strong></td>
+          <td>Direct OS kernel attachment</td>
+          <td>Mounted network filesystem</td>
+          <td class="highlight">Any Web Browser, Mobile App, or CLI</td>
+        </tr>
+        <tr>
+          <td><strong>Web Scalability</strong></td>
+          <td>Limited to host VM</td>
+          <td>Severely throttled by app server NIC</td>
+          <td class="highlight">Virtually infinite; edge distributed</td>
+        </tr>
+        <tr>
+          <td><strong>Cost Factor</strong></td>
+          <td>High (Dedicated Fibre/SAN arrays)</td>
+          <td>Medium-High (Compute + Provisioned IOPS)</td>
+          <td class="highlight">Low ($0.023/GB, Pay-as-you-go)</td>
+        </tr>
+        <tr>
+          <td><strong>Client Offloading</strong></td>
+          <td>None</td>
+          <td>None (Web server must read and proxy)</td>
+          <td class="highlight">Native: Presigned URLs delegate transfers</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="card">
+      <h3 style="color:#fff;">Key Architectural Takeaway for Cloud Architects</h3>
+      <p>In high-scale web systems, using NAS requires every byte to be read by the backend server and forwarded to the user, creating a CPU and bandwidth choke point. With S3, your backend merely acts as an authorization token generator (creating SigV4 links), while 100% of the heavy data transfer happens between the browser and AWS storage infrastructure.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchTab(tabId) {
+    document.querySelectorAll('.nav-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    if (tabId === 'tester') {
+      document.querySelectorAll('.nav-tab')[0].classList.add('active');
+      document.getElementById('tab-tester').classList.add('active');
+    } else if (tabId === 'repo') {
+      document.querySelectorAll('.nav-tab')[1].classList.add('active');
+      document.getElementById('tab-repo').classList.add('active');
+    } else {
+      document.querySelectorAll('.nav-tab')[2].classList.add('active');
+      document.getElementById('tab-theory').classList.add('active');
+    }
+  }
+
+  function testPresignedGet() {
+    const url = document.getElementById('getUrlInput').value.trim();
+    const box = document.getElementById('previewContainer');
+    if (!url) return alert('Please paste your Presigned GET URL.');
+
+    box.innerHTML = '<span style="color:#38bdf8;">Loading direct S3 media stream...</span>';
+
+    const img = new Image();
+    img.style.maxWidth = '100%';
+    img.style.borderRadius = '4px';
+    img.onload = () => {
+      box.innerHTML = '';
+      box.appendChild(img);
+    };
+    img.onerror = () => {
+      box.innerHTML = '<div style="color:var(--error); font-size:13px; text-align:center;"><strong>Transfer Failed (403 Forbidden / Expired)</strong><br>Check if your SigV4 TTL expired or if bucket CORS is configured.</div>';
+    };
+    img.src = url;
+  }
+
+  async function testPresignedPut() {
+    const url = document.getElementById('putUrlInput').value.trim();
+    const fileInput = document.getElementById('fileInput');
+    const log = document.getElementById('uploadStatus');
+
+    if (!url || !fileInput.files[0]) {
+      return alert('Select a PNG file and enter the Presigned PUT URL.');
+    }
+
+    const file = fileInput.files[0];
+    log.style.display = 'block';
+    log.style.color = '#38bdf8';
+    log.innerText = '[STREAMING] Direct upload in progress to AWS S3 (' + file.size + ' bytes)...';
+
+    try {
+      const response = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'image/png' },
+        body: file
+      });
+
+      if (response.ok) {
+        log.style.color = 'var(--success)';
+        log.innerText = '[HTTP 200 SUCCESS] Direct client-to-S3 payload delivered! Web server was completely bypassed.';
+      } else {
+        log.style.color = 'var(--error)';
+        log.innerText = '[HTTP ' + response.status + ' ERROR] S3 rejected upload. Verify URL expiration and CORS configuration.';
+      }
+    } catch (err) {
+      log.style.color = 'var(--error)';
+      log.innerText = '[NETWORK/CORS ERROR] ' + err.message;
+    }
+  }
+
+  const fileContents = {
+    setup: `import os
+import boto3
+
+VAULT_BUCKET = os.getenv("VAULT_BUCKET_NAME", "my-s3-vault-lab-xyz")
+REGION = os.getenv("AWS_REGION", "us-east-1")
+
+s3 = boto3.client('s3', region_name=REGION)
+
+def setup_vault():
+    print(f"Creating Private Media Vault: {VAULT_BUCKET}...")
+    if REGION == "us-east-1":
+        s3.create_bucket(Bucket=VAULT_BUCKET)
+    else:
+        s3.create_bucket(Bucket=VAULT_BUCKET, CreateBucketConfiguration={'LocationConstraint': REGION})
+
+    # Block 100% of public access (Vault security pattern)
+    s3.put_public_access_block(
+        Bucket=VAULT_BUCKET,
+        PublicAccessBlockConfiguration={
+            'BlockPublicAcls': True,
+            'IgnorePublicAcls': True,
+            'BlockPublicPolicy': True,
+            'RestrictPublicBuckets': True
+        }
+    )
+    print("✓ Public access blocked.")
+
+    # Configure CORS so web browsers on Vercel can stream directly
+    cors_config = {
+        'CORSRules': [{
+            'AllowedHeaders': ['*'],
+            'AllowedMethods': ['GET', 'PUT', 'HEAD'],
+            'AllowedOrigins': ['*'],
+            'ExposeHeaders': ['ETag'],
+            'MaxAgeSeconds': 3000
+        }]
+    }
+    s3.put_bucket_cors(Bucket=VAULT_BUCKET, CORSConfiguration=cors_config)
+    print("✓ Bucket CORS enabled.")
+
+if __name__ == "__main__":
+    setup_vault()`,
+
+    generate: `import os
+import boto3
+
+VAULT_BUCKET = os.getenv("VAULT_BUCKET_NAME", "my-s3-vault-lab-xyz")
+s3 = boto3.client('s3')
+
+SAMPLE_KEY = "vault/confidential-diagram.png"
+
+def seed_sample_asset():
+    tiny_png = (
+        b'\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01'
+        b'\x08\x06\x00\x00\x00\x1f\x15c4\x00\x00\x00\rIDATx\x9cc`\x00\x00\x00'
+        b'\x02\x00\x01H\xaf\xa4q\x00\x00\x00\x00IEND\xaeB`\x82'
+    )
+    s3.put_object(Bucket=VAULT_BUCKET, Key=SAMPLE_KEY, Body=tiny_png, ContentType="image/png")
+    print(f"✓ Seeded test image: s3://{VAULT_BUCKET}/{SAMPLE_KEY}")
+
+def generate_urls():
+    # Ephemeral GET URL (Valid 60 seconds)
+    get_url = s3.generate_presigned_url(
+        ClientMethod='get_object',
+        Params={'Bucket': VAULT_BUCKET, 'Key': SAMPLE_KEY},
+        ExpiresIn=60
+    )
+
+    # Ephemeral PUT URL (Valid 300 seconds)
+    put_url = s3.generate_presigned_url(
+        ClientMethod='put_object',
+        Params={'Bucket': VAULT_BUCKET, 'Key': 'vault/direct-user-upload.png', 'ContentType': 'image/png'},
+        ExpiresIn=300
+    )
+
+    print("\n=== PASTE THESE INTO YOUR VERCEL APP ===")
+    print(f"\nPresigned GET URL (Valid 60s):\n{get_url}")
+    print(f"\nPresigned PUT URL (Valid 300s):\n{put_url}\n")
+
+if __name__ == "__main__":
+    seed_sample_asset()
+    generate_urls()`,
+
+    env: `AWS_ACCESS_KEY_ID="your_access_key_here"
+AWS_SECRET_ACCESS_KEY="your_secret_key_here"
+AWS_DEFAULT_REGION="us-east-1"
+VAULT_BUCKET_NAME="my-s3-vault-lab-unique-name"`,
+
+    reqs: `boto3>=1.34.0
+python-dotenv>=1.0.0`
+  };
+
+  let currentKey = 'setup';
+  function showFile(key) {
+    currentKey = key;
+    document.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('codeDisplay').innerText = fileContents[key];
+  }
+
+  function copyCode() {
+    navigator.clipboard.writeText(fileContents[currentKey]).then(() => {
+      alert('Copied ' + currentKey + ' to clipboard!');
+    });
+  }
+
+  // Initial load
+  document.getElementById('codeDisplay').innerText = fileContents['setup'];
+</script>
+
+</body>
+</html>

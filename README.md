@@ -1,118 +1,108 @@
-# Native Cloud Object Storage: Programmatic S3 & Pre-Signed Access
+# AWS S3 Object Storage Lab
 
-This repository contains a small Python reference for working with Amazon S3 from an EC2 instance using the instance's IAM role.
+This assignment compares AWS S3 object storage with traditional NAS/SAN storage and demonstrates how applications can use S3 metadata and time-limited pre-signed URLs to transfer files directly between a client and S3.
 
-The script in this repo demonstrates:
+## Learning objectives
 
-- uploading an object to S3
-- reading object metadata with `head_object`
-- generating a temporary pre-signed URL for delegated read access
+- Provision a private S3 bucket and keep public access blocked.
+- Upload an object and inspect its system and user-defined metadata.
+- Generate and test time-limited pre-signed GET and PUT URLs.
+- Explain how direct S3 transfers reduce application-server bandwidth use.
+- Compare object storage with NAS/SAN architectures.
 
-The project is the GitHub repository `unigib/s3aws`, and the main script is `s3-aws-reference.py`.
+## Lab portal
 
-## Repository contents
+The interactive portal includes an architecture visualizer and a live transfer-testing studio. If you are deploying the portal as the lecturer:
 
-```text
-.
-├── README.md               # Project overview and usage notes
-└── s3-aws-reference.py     # Reference script for S3 upload + metadata + pre-signed URL
-```
+1. Push this repository to GitHub.
+2. In [Vercel](https://vercel.com), choose **Add New > Project** and import the repository.
+3. Keep the default **Other** framework settings and deploy.
+4. Share the generated Vercel URL with students, or add it to the Canvas assignment.
 
-## Prerequisites
+## Student assignment
 
-Before running the script, make sure you have:
+### Prerequisites
 
-- an AWS EC2 instance
-- an IAM role or instance profile attached to the instance with S3 permissions
-- Python 3 installed
-- the `boto3` and `requests` packages installed
+- An AWS account and permission to create and use an S3 bucket.
+- Python 3.
+- AWS credentials supplied through an EC2 instance role or environment variables.
+- The Vercel lab portal URL supplied by your instructor.
 
-## Setup
+Use an IAM identity with only the permissions needed for this lab. Do not commit credentials or post them in the portal, screenshots, or submitted work. On EC2, prefer an attached IAM role instead of access keys.
 
-From a terminal on the EC2 instance:
+### 1. Install the project dependencies
+
+From the repository directory:
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install boto3 requests
+python -m venv .venv
 ```
 
-If you are on Windows PowerShell, use:
+Activate the environment and install dependencies:
+
+```bash
+# macOS/Linux
+source .venv/bin/activate
+
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+
+python -m pip install -r requirements.txt
+```
+
+### 2. Configure AWS and create the private bucket
+
+Set the environment variables for your shell or configure the EC2 instance role. For example, in PowerShell:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install boto3 requests
+$env:AWS_ACCESS_KEY_ID = "your_access_key"
+$env:AWS_SECRET_ACCESS_KEY = "your_secret_key"
+$env:AWS_DEFAULT_REGION = "us-east-1"
+$env:VAULT_BUCKET_NAME = "vault-your-student-id-lab"
 ```
 
-## Configuration
+On macOS/Linux, use `export NAME="value"` for each variable. Choose a globally unique bucket name. The scripts use `VAULT_BUCKET_NAME` for the private vault; its default value is only a placeholder.
 
-Before running the script, create the target S3 bucket in AWS. The bucket must already exist before the code calls `put_object`.
-
-You can create it with the AWS CLI:
+Create the bucket, enable the script's public-access block and CORS configuration, then upload a sample image and generate temporary links:
 
 ```bash
-aws s3 mb s3://your-bucket-name --region us-east-1
+python setup_storage.py
+python generate_links.py
 ```
 
-Or create it in the AWS Management Console:
+The generated GET URL is valid for 60 seconds and the PUT URL for 300 seconds. Anyone holding a pre-signed URL can use it until it expires, so treat these URLs as temporary credentials.
 
-1. Open **Amazon S3** in the AWS Console and choose **Create bucket**.
-2. Enter a globally unique bucket name and select the AWS Region.
-3. Keep the recommended settings unless your lab instructions require different settings, then choose **Create bucket**.
+### 3. Test direct transfers in the portal
 
-Then edit the `BUCKET_NAME` and `OBJECT_KEY` values at the top of `s3-aws-reference.py`:
+1. Open the Vercel lab portal and go to its live URL testing studio.
+2. Paste the generated GET URL into the download test and verify the image loads directly from S3.
+3. Paste the generated PUT URL into the upload test, select a PNG, and verify the direct upload succeeds.
+4. Wait for the GET URL to expire, then test it again and observe the access-denied response.
 
-```python
-BUCKET_NAME = "your-bucket-name"
-OBJECT_KEY = "datasets/telemetry_2026.json"
-```
+### 4. Run the S3 object-operations reference script
 
-> The bucket name must be globally unique across AWS. Make sure your AWS SDK/CLI region configuration is appropriate for the bucket's region.
+The reference script demonstrates uploading a JSON object, inspecting it with `head_object`, and generating a pre-signed GET URL. It uses the credentials available to the process, including an EC2 instance role when run on EC2.
 
-## Before you run
-
-- [ ] An AWS account is available, and you can access the target EC2 instance.
-- [ ] The S3 bucket has been created, using either the AWS CLI or the AWS Console.
-- [ ] `BUCKET_NAME` in `s3-aws-reference.py` matches the bucket you created.
-- [ ] The EC2 instance has an IAM role attached with permission to upload and read objects in that bucket (including `s3:PutObject` and `s3:GetObject`).
-- [ ] Python 3 is available, and `boto3` and `requests` are installed in the active environment.
-- [ ] AWS credentials are provided by the instance role; no access keys are hardcoded in the script.
-
-## Run the script
+Before running it, edit `BUCKET_NAME` in `s3-aws-reference.py` to the bucket you created. Then run:
 
 ```bash
 python s3-aws-reference.py
 ```
 
-This will upload a sample JSON object, print the object metadata from `head_object`, and generate a pre-signed URL for direct access.
+The script uploads `datasets/telemetry_2026.json`, prints the content type, ETag, and user metadata, then fetches the object using a pre-signed GET URL that is valid for 300 seconds. Do not share the printed URL publicly.
 
-## Notes
+### 5. Submit
 
-- Do not hardcode AWS access keys in the script.
-- The code expects to use credentials that are automatically available to the EC2 instance via its IAM role.
-- The pre-signed URL is time-limited and is intended for short-lived delegated access.
+Submit the following through Canvas:
 
-## Typical troubleshooting
+1. A screenshot showing your S3 bucket with **Block all public access** enabled and the CORS configuration saved.
+2. A screenshot of the portal showing a successful direct download and direct upload.
+3. A screenshot showing the expired GET link returning an access-denied response.
+4. One paragraph explaining how direct S3 transfers reduce application-server bandwidth use compared with serving files from a mounted NAS directory.
 
-- `AccessDenied` or `NoCredentialsError`: check that the EC2 instance has the correct IAM role attached.
-- `NoSuchBucket`: confirm the bucket name and region are correct.
-- `SignatureDoesNotMatch`: verify the URL is not truncated and that the instance clock is reasonably in sync.
+## Troubleshooting
 
-## What to expect from the pre-signed URL
-
-The script generates a pre-signed **GET** URL that grants temporary read access to the uploaded object. It is valid for 300 seconds (5 minutes). Anyone with the URL can use it during that period, without AWS credentials, so treat it like a temporary password and do not post or share it publicly.
-
-While it is valid, opening the URL in a browser or requesting it with `curl` should return HTTP `200` and the uploaded JSON:
-
-```json
-{"sensor": "temp_probe_01", "status": "active", "reading": 23.4}
-```
-
-For example, copy the URL printed by the script and run:
-
-```bash
-curl -i "<PASTE_PRESIGNED_URL_HERE>"
-```
-
-After the 5-minute expiration window, the same request should fail with HTTP `403 Forbidden` and an S3 error indicating that the request has expired. The script also tests the URL immediately and prints the HTTP status and returned content.
+- **AccessDenied or NoCredentialsError:** Check the active AWS credentials or EC2 role and ensure it has the required bucket permissions.
+- **NoSuchBucket:** Check the bucket name and region.
+- **SignatureDoesNotMatch:** Make sure the URL was copied in full and the system clock is synchronized.
+- **Expired URL:** Generate a new link; pre-signed URLs work only for their configured time limit.
